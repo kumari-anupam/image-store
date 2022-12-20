@@ -1,0 +1,35 @@
+image:
+  repository: image-store:latest
+  tag: latest    # will be replaced
+  pullPolicy: IfNotPresent
+  registry: localhost:5000
+resources:
+# TODO: run this through panormos/ncs-resource-guesstimator
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+scale:
+  min: 2
+  max: 5
+  targetCPU: 60
+replicaCount: 1
+env:
+  ginMode: release
+  logLevel: debug
+  ginAccessLog: true
+service:
+  name: imagestore
+  serviceType: ClusterIP
+  internalPort: 8080
+  externalPort: 80
+db:
+  # use this to supply secret names with required details
+  host: postgresdb-postgresql.default.svc.cluster.local
+  port: 5432
+  name: imagestore
+  username: username
+  password: password
+  driver: postgres

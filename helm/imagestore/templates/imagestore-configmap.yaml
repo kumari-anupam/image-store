@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "name" . }}-config
+  labels:
+    app: {{ template "name" . }}
+    release: {{ .Release.Name }}
+data:
+  PORT: {{ .Values.service.internalPort | quote }}
+  GIN_ACCESS_LOG: {{ .Values.env.ginAccessLog | quote }}
+  LOG_LEVEL: {{ .Values.env.logLevel | quote }}
+  DB_DRIVER: { { .Values.db.driver | quote } }
+  DB_NAME: { { .Values.db.name | quote } }
+  DB_HOST: { { .Values.db.host | quote } }
+  DB_PORT: { { .Values.db.port | quote } }
+

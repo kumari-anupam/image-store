@@ -1,0 +1,7 @@
+apiVersion: v1
+description: A helm chart for the imagestore
+name: imagestore
+version: 0.0.1
+sources:
+  - https://github.com/anupam111/image-store
+

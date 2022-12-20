@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "name" . }}
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "name" . }}
+      chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+      heritage: {{ .Release.Service }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+        heritage: {{ .Release.Service }}
+        release: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/support/metrics"
+        prometheus.io/port: {{ .Values.service.internalPort | quote }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - {{ template "name" . }}
+                topologyKey: failure-domain.beta.kubernetes.io/zone
+      containers:
+        - name: {{ template "name" . }}
+          {{ - if .Values.image.registry }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          {{ - else }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          {{ - end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ template "name" . }}-config
+            - secretRef:
+                name: {{ template "name" . }}-dbcredentials
+          ports:
+              - containerPort: {{ .Values.service.internalPort }}
+          resources:
+  {{ toYaml .Values.resources | indent 12 }}
+readinessProbe:
+  httpGet:
+    path: /status
+    port: {{ .Values.service.internalPort }}
+  initialDelaySeconds: 10
+  timeoutSeconds: 2
+  periodSeconds: 30
+livenessProbe:
+  httpGet:
+    path: /status
+    port: {{ .Values.service.internalPort }}
+  initialDelaySeconds: 10
+  timeoutSeconds: 2
+  periodSeconds: 60
+initContainers:
+  - name: {{ template "name" . }}-migration
+    {{- if .Values.image.registry }}
+    image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}-migration"
+    {{- else }}
+    image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}-migration"
+    {{- end }}
+    imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+    resources:
+  {{ toYaml .Values.resources | indent 12 }}
+envFrom:
+  - configMapRef:
+      name: {{ template "name" . }}-dbconfig
+  - secretRef:
+  {{ if .Values.db.credentialsSecretName -}}
+  name: {{ .Values.db.credentialsSecretName }}
+  {{- else -}}
+  name: {{ template "name" . }}-dbcredentials
+  {{- end }}
+command: ["sh"]
+args: ["migrateDB.sh"]
